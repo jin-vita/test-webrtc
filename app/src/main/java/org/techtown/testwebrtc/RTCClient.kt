@@ -111,4 +111,46 @@ class RTCClient(
             }
         }, mediaConstraints)
     }
+
+    fun onRemoteSessionReceived(session: SessionDescription) {
+        peerConnection.setRemoteDescription(object : SdpObserver {
+            override fun onCreateSuccess(p0: SessionDescription?) {}
+            override fun onSetSuccess() {}
+            override fun onCreateFailure(p0: String?) {}
+            override fun onSetFailure(p0: String?) {}
+        }, session)
+    }
+
+    fun answer(target: String) {
+        val constraints: MediaConstraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+        }
+        peerConnection.createOffer(object : SdpObserver {
+            override fun onSetSuccess() {}
+            override fun onCreateFailure(p0: String?) {}
+            override fun onSetFailure(p0: String?) {}
+            override fun onCreateSuccess(description: SessionDescription) {
+                peerConnection.setLocalDescription(object : SdpObserver {
+                    override fun onCreateSuccess(p0: SessionDescription?) {}
+                    override fun onCreateFailure(p0: String?) {}
+                    override fun onSetFailure(p0: String?) {}
+                    override fun onSetSuccess() {
+                        val answer = hashMapOf(
+                            "sdp" to description.description,
+                            "type" to description.type
+                        )
+                        socketRepository.sendMessage(
+                            MessageModel(
+                                type = "create_answer",
+                                name = userName,
+                                target = target,
+                                data = answer,
+                            )
+                        )
+                    }
+                }, description)
+            }
+        }, constraints)
+
+    }
 }

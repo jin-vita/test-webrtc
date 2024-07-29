@@ -9,6 +9,7 @@ import org.techtown.testwebrtc.util.NewMessageInterface
 import org.techtown.testwebrtc.util.PeerConnectionObserver
 import org.webrtc.IceCandidate
 import org.webrtc.MediaStream
+import org.webrtc.SessionDescription
 
 class CallActivity : AppCompatActivity(), NewMessageInterface {
     companion object {
@@ -67,17 +68,41 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                     runOnUiThread {
                         AppData.showToast("user is not reachable")
                     }
-                } else {
-                    // we are ready for call, we started a call
-                    runOnUiThread {
-                        setWhoToCallLayoutVisibility(false)
+                    return
+                }
+                // we are ready for call, we started a call
+                runOnUiThread {
+                    setWhoToCallLayoutVisibility(false)
+                    setCallLayoutVisibility(true)
+                    binding.apply {
+                        rtcClient.initializeSurfaceView(localView)
+                        rtcClient.initializeSurfaceView(remoteView)
+                        rtcClient.startLocalVideo(localView)
+                        rtcClient.call(targetUserNameEt.text.toString())
+                    }
+                }
+            }
+
+            "offer_received" -> {
+                setIncomingCallLayoutVisibility(true)
+                binding.apply {
+                    incomingNameTV.text = String.format("%s is calling you", message.name.toString())
+                    acceptButton.setOnClickListener {
+                        setIncomingCallLayoutVisibility(false)
                         setCallLayoutVisibility(true)
-                        binding.apply {
-                            rtcClient.initializeSurfaceView(localView)
-                            rtcClient.initializeSurfaceView(remoteView)
-                            rtcClient.startLocalVideo(localView)
-                            rtcClient.call(targetUserNameEt.text.toString())
-                        }
+                        setWhoToCallLayoutVisibility(false)
+                        rtcClient.initializeSurfaceView(localView)
+                        rtcClient.initializeSurfaceView(remoteView)
+                        rtcClient.startLocalVideo(localView)
+                        val session = SessionDescription(
+                            SessionDescription.Type.OFFER,
+                            message.data.toString()
+                        )
+                        rtcClient.onRemoteSessionReceived(session)
+                        rtcClient.answer(message.name.toString())
+                    }
+                    rejectButton.setOnClickListener {
+                        setIncomingCallLayoutVisibility(false)
                     }
                 }
             }
