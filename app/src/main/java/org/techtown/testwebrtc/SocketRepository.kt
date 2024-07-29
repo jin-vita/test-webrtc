@@ -12,9 +12,9 @@ class SocketRepository(private val messageInterface: NewMessageInterface) {
         private const val TAG: String = "SocketRepository"
     }
 
-    private var webSocket: WebSocketClient? = null
-    private var userName: String? = null
-    private var gson: Gson = Gson()
+    private lateinit var webSocket: WebSocketClient
+    private lateinit var userName: String
+    private val gson: Gson by lazy { Gson() }
 
     fun initSocket(userName: String) {
         this.userName = userName
@@ -22,7 +22,7 @@ class SocketRepository(private val messageInterface: NewMessageInterface) {
         // if you are using your phone as emulator your local address is going to be this: "ws://192.168.1.3:3000"
         // but if your websocket is deployed you add your websocket address here
 
-        webSocket = object : WebSocketClient(URI("ws://10.0..2.2:3000")) {
+        webSocket = object : WebSocketClient(URI("ws://192.168.148.110:3000")) {
             override fun onOpen(handshakedata: ServerHandshake?) {
                 sendMessage(
                     MessageModel(
@@ -50,12 +50,12 @@ class SocketRepository(private val messageInterface: NewMessageInterface) {
                 AppData.error(TAG, "WebSocketClient onError", ex)
             }
         }
-        webSocket?.connect()
+        webSocket.connect()
     }
 
     fun sendMessage(message: MessageModel) {
         try {
-            webSocket?.send(gson.toJson(message))
+            webSocket.send(gson.toJson(message))
         } catch (ex: Exception) {
             AppData.error(TAG, "sendMessage error", ex)
         }
