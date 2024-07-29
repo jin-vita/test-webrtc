@@ -18,8 +18,11 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
 
     private val binding by lazy { ActivityCallBinding.inflate(layoutInflater) }
     private lateinit var userName: String
+    private lateinit var target: String
     private lateinit var socketRepository: SocketRepository
     private lateinit var rtcClient: RTCClient
+    private var isMute = false
+    private var isCameraPause = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +60,39 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                 )
             )
         }
+
+        micButton.setOnClickListener {
+            if (isMute) {
+                isMute = false
+                micButton.setImageResource(R.drawable.ic_baseline_mic_off_24)
+            } else {
+                isMute = true
+                micButton.setImageResource(R.drawable.ic_baseline_mic_24)
+            }
+            rtcClient.toggleAudio(isMute)
+        }
+
+        videoButton.setOnClickListener {
+            if (isCameraPause) {
+                isCameraPause = false
+                videoButton.setImageResource(R.drawable.ic_baseline_videocam_off_24)
+            } else {
+                isCameraPause = true
+                videoButton.setImageResource(R.drawable.ic_baseline_videocam_24)
+            }
+            rtcClient.toggleCamera(isCameraPause)
+        }
+
+        endCallButton.setOnClickListener {
+            setCallLayoutVisibility(false)
+            setWhoToCallLayoutVisibility(true)
+            setIncomingCallLayoutVisibility(false)
+            rtcClient.endCall()
+        }
+
+        switchCameraButton.setOnClickListener {
+            rtcClient.switchCamera()
+        }
     }
 
     override fun onNewMessage(message: MessageModel) {
@@ -85,24 +121,27 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
 
             "offer_received" -> {
                 setIncomingCallLayoutVisibility(true)
-                binding.apply {
-                    incomingNameTV.text = String.format("%s is calling you", message.name.toString())
-                    acceptButton.setOnClickListener {
-                        setIncomingCallLayoutVisibility(false)
-                        setCallLayoutVisibility(true)
-                        setWhoToCallLayoutVisibility(false)
-                        rtcClient.initializeSurfaceView(localView)
-                        rtcClient.initializeSurfaceView(remoteView)
-                        rtcClient.startLocalVideo(localView)
-                        val session = SessionDescription(
-                            SessionDescription.Type.OFFER,
-                            message.data.toString()
-                        )
-                        rtcClient.onRemoteSessionReceived(session)
-                        rtcClient.answer(message.name.toString())
-                    }
-                    rejectButton.setOnClickListener {
-                        setIncomingCallLayoutVisibility(false)
+                runOnUiThread {
+                    binding.apply {
+                        incomingNameTV.text = String.format("%s is calling you", message.name.toString())
+                        acceptButton.setOnClickListener {
+                            setIncomingCallLayoutVisibility(false)
+                            setCallLayoutVisibility(true)
+                            setWhoToCallLayoutVisibility(false)
+                            rtcClient.initializeSurfaceView(localView)
+                            rtcClient.initializeSurfaceView(remoteView)
+                            rtcClient.startLocalVideo(localView)
+                            val session = SessionDescription(
+                                SessionDescription.Type.OFFER,
+                                message.data.toString()
+                            )
+                            rtcClient.onRemoteSessionReceived(session)
+                            target = message.name.toString()
+                            rtcClient.answer(message.name.toString())
+                        }
+                        rejectButton.setOnClickListener {
+                            setIncomingCallLayoutVisibility(false)
+                        }
                     }
                 }
             }
@@ -113,6 +152,9 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                     message.data.toString()
                 )
                 rtcClient.onRemoteSessionReceived(session)
+                runOnUiThread {
+                    binding.remoteViewLoading.visibility = View.GONE
+                }
             }
         }
     }

@@ -22,7 +22,7 @@ class RTCClient(
     private val peerConnection by lazy { createPeerConnection(observer)!! }
     private val localVideoSource by lazy { peerConnectionFactory.createVideoSource(false) }
     private val localAudioSource by lazy { peerConnectionFactory.createAudioSource(MediaConstraints()) }
-    private lateinit var videoCapture: VideoCapturer
+    private lateinit var videoCapture: CameraVideoCapturer
     private lateinit var localVideoTrack: VideoTrack
     private lateinit var localAudioTrack: AudioTrack
 
@@ -70,7 +70,7 @@ class RTCClient(
         peerConnection.addStream(localStream)
     }
 
-    private fun getVideoCapture(application: Application): VideoCapturer {
+    private fun getVideoCapture(application: Application): CameraVideoCapturer {
         return Camera2Enumerator(application).run {
             deviceNames.find {
                 isFrontFacing(it)
@@ -151,6 +151,25 @@ class RTCClient(
                 }, description)
             }
         }, constraints)
+    }
 
+    fun addIceCandidate(ice: IceCandidate) {
+        peerConnection.addIceCandidate(ice)
+    }
+
+    fun switchCamera() {
+        videoCapture.switchCamera(null)
+    }
+
+    fun toggleAudio(isMute: Boolean) {
+        localAudioTrack.setEnabled(isMute)
+    }
+
+    fun toggleCamera(isCameraPause: Boolean) {
+        localVideoTrack.setEnabled(isCameraPause)
+    }
+
+    fun endCall() {
+        peerConnection.close()
     }
 }
