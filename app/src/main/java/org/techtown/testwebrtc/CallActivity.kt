@@ -106,6 +106,14 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                     }
                 }
             }
+
+            "answer_received" -> {
+                val session = SessionDescription(
+                    SessionDescription.Type.ANSWER,
+                    message.data.toString()
+                )
+                rtcClient.onRemoteSessionReceived(session)
+            }
         }
     }
 
