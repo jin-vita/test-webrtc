@@ -1,6 +1,7 @@
 package org.techtown.testwebrtc
 
 import android.app.Application
+import org.techtown.testwebrtc.models.MessageModel
 import org.webrtc.*
 
 class RTCClient(
@@ -18,7 +19,7 @@ class RTCClient(
     private val iceServers = listOf(
         PeerConnection.IceServer.builder("stun:iphone-stun.strato-iphone.de:3478").createIceServer()
     )
-    private val peerConnection by lazy { createPeerConnection(observer) }
+    private val peerConnection by lazy { createPeerConnection(observer)!! }
     private val localVideoSource by lazy { peerConnectionFactory.createVideoSource(false) }
     private val localAudioSource by lazy { peerConnectionFactory.createAudioSource(MediaConstraints()) }
     private lateinit var videoCapture: VideoCapturer
@@ -66,7 +67,7 @@ class RTCClient(
         val localStream = peerConnectionFactory.createLocalMediaStream("local_stream")
         localStream.addTrack(localVideoTrack)
         localStream.addTrack(localAudioTrack)
-        peerConnection?.addStream(localStream)
+        peerConnection.addStream(localStream)
     }
 
     private fun getVideoCapture(application: Application): VideoCapturer {
@@ -77,5 +78,37 @@ class RTCClient(
                 createCapturer(it, null)
             } ?: throw IllegalStateException()
         }
+    }
+
+    fun call(target: String) {
+        val mediaConstraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+        }
+        peerConnection.createOffer(object : SdpObserver {
+            override fun onSetSuccess() {}
+            override fun onCreateFailure(p0: String?) {}
+            override fun onSetFailure(p0: String?) {}
+            override fun onCreateSuccess(description: SessionDescription) {
+                peerConnection.setLocalDescription(object : SdpObserver {
+                    override fun onCreateSuccess(p0: SessionDescription?) {}
+                    override fun onCreateFailure(p0: String?) {}
+                    override fun onSetFailure(p0: String?) {}
+                    override fun onSetSuccess() {
+                        val offer = hashMapOf(
+                            "sdp" to description.description,
+                            "type" to description.type
+                        )
+                        socketRepository.sendMessage(
+                            MessageModel(
+                                type = "create_offer",
+                                name = userName,
+                                target = target,
+                                data = offer,
+                            )
+                        )
+                    }
+                }, description)
+            }
+        }, mediaConstraints)
     }
 }

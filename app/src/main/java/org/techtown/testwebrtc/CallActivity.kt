@@ -1,6 +1,7 @@
 package org.techtown.testwebrtc
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import org.techtown.testwebrtc.databinding.ActivityCallBinding
 import org.techtown.testwebrtc.models.MessageModel
@@ -22,13 +23,13 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
-        init()
+        with(binding) { init() }
     }
 
-    private fun init() {
+    private fun ActivityCallBinding.init() {
         userName = intent.getStringExtra("userName").toString()
-        binding.targetUserNameEt.hint = "hey $userName! who to call ?"
-        socketRepository = SocketRepository(this)
+        targetUserNameEt.hint = "hey $userName! who to call ?"
+        socketRepository = SocketRepository(this@CallActivity)
         socketRepository.initSocket(userName)
         rtcClient = RTCClient(
             application = application,
@@ -44,11 +45,66 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                 }
             }
         )
-        rtcClient.initializeSurfaceView(binding.localView)
-        rtcClient.startLocalVideo(binding.localView)
+
+        callBtn.setOnClickListener {
+            socketRepository.sendMessage(
+                MessageModel(
+                    type = "start_call",
+                    name = userName,
+                    target = targetUserNameEt.text.toString(),
+                    data = null,
+                )
+            )
+        }
     }
 
-    override fun onNewMessage(newMessage: MessageModel) {
-        TODO("Not yet implemented")
+    override fun onNewMessage(message: MessageModel) {
+        AppData.debug(TAG, "onNewMessage: $message")
+        when (message.type) {
+            "call_response" -> {
+                if (message.data == "user is not online") {
+                    // user is not reachable
+                    runOnUiThread {
+                        AppData.showToast("user is not reachable")
+                    }
+                } else {
+                    // we are ready for call, we started a call
+                    runOnUiThread {
+                        setWhoToCallLayoutVisibility(false)
+                        setCallLayoutVisibility(true)
+                        binding.apply {
+                            rtcClient.initializeSurfaceView(localView)
+                            rtcClient.initializeSurfaceView(remoteView)
+                            rtcClient.startLocalVideo(localView)
+                            rtcClient.call(targetUserNameEt.text.toString())
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setIncomingCallLayoutVisibility(isVisible: Boolean) {
+        val visibility = when (isVisible) {
+            true -> View.VISIBLE
+            false -> View.GONE
+        }
+        binding.incomingCallLayout.visibility = visibility
+    }
+
+    private fun setCallLayoutVisibility(isVisible: Boolean) {
+        val visibility = when (isVisible) {
+            true -> View.VISIBLE
+            false -> View.GONE
+        }
+        binding.callLayout.visibility = visibility
+    }
+
+    private fun setWhoToCallLayoutVisibility(isVisible: Boolean) {
+        val visibility = when (isVisible) {
+            true -> View.VISIBLE
+            false -> View.GONE
+        }
+        binding.whoToCallLayout.visibility = visibility
     }
 }
