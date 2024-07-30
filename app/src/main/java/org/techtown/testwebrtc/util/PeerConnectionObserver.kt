@@ -15,13 +15,13 @@ open class PeerConnectionObserver : PeerConnection.Observer {
     override fun onIceGatheringChange(p0: PeerConnection.IceGatheringState?) {
     }
 
-    override fun onIceCandidate(p0: IceCandidate?) {
+    override fun onIceCandidate(ice: IceCandidate?) {
     }
 
     override fun onIceCandidatesRemoved(p0: Array<out IceCandidate>?) {
     }
 
-    override fun onAddStream(p0: MediaStream?) {
+    override fun onAddStream(stream: MediaStream) {
     }
 
     override fun onRemoveStream(p0: MediaStream?) {

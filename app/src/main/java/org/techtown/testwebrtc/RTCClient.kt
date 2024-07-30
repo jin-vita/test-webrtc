@@ -1,6 +1,7 @@
 package org.techtown.testwebrtc
 
 import android.app.Application
+import com.google.gson.Gson
 import org.techtown.testwebrtc.models.MessageModel
 import org.webrtc.*
 
@@ -14,14 +15,19 @@ class RTCClient(
         initPeerConnectionFactory(application)
     }
 
+    companion object {
+        private const val TAG: String = "RTCClient"
+    }
+
     private val eglBase: EglBase = EglBase.create()
     private val peerConnectionFactory by lazy { createPeerConnectionFactory() }
     private val iceServers = listOf(
         PeerConnection.IceServer.builder("stun:iphone-stun.strato-iphone.de:3478").createIceServer()
     )
-    private val peerConnection by lazy { createPeerConnection(observer)!! }
+    private val peerConnection by lazy { createPeerConnection(observer) }
     private val localVideoSource by lazy { peerConnectionFactory.createVideoSource(false) }
     private val localAudioSource by lazy { peerConnectionFactory.createAudioSource(MediaConstraints()) }
+    private val gson by lazy { Gson() }
     private lateinit var videoCapture: CameraVideoCapturer
     private lateinit var localVideoTrack: VideoTrack
     private lateinit var localAudioTrack: AudioTrack
@@ -63,11 +69,11 @@ class RTCClient(
         videoCapture.startCapture(320, 240, 30)
         localVideoTrack = peerConnectionFactory.createVideoTrack("local_track", localVideoSource)
         localVideoTrack.addSink(surface)
-        localAudioTrack = peerConnectionFactory.createAudioTrack("local_track", localAudioSource)
+        localAudioTrack = peerConnectionFactory.createAudioTrack("local_track_audio", localAudioSource)
         val localStream = peerConnectionFactory.createLocalMediaStream("local_stream")
         localStream.addTrack(localVideoTrack)
         localStream.addTrack(localAudioTrack)
-        peerConnection.addStream(localStream)
+        peerConnection?.addStream(localStream)
     }
 
     private fun getVideoCapture(application: Application): CameraVideoCapturer {
@@ -81,15 +87,17 @@ class RTCClient(
     }
 
     fun call(target: String) {
+        AppData.error(TAG, "call called. target: $target")
         val mediaConstraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
         }
-        peerConnection.createOffer(object : SdpObserver {
+        peerConnection?.createOffer(object : SdpObserver {
             override fun onSetSuccess() {}
             override fun onCreateFailure(p0: String?) {}
             override fun onSetFailure(p0: String?) {}
             override fun onCreateSuccess(description: SessionDescription) {
-                peerConnection.setLocalDescription(object : SdpObserver {
+                AppData.error(TAG, "call onCreateSuccess. description: ${description.description}")
+                peerConnection?.setLocalDescription(object : SdpObserver {
                     override fun onCreateSuccess(p0: SessionDescription?) {}
                     override fun onCreateFailure(p0: String?) {}
                     override fun onSetFailure(p0: String?) {}
@@ -98,6 +106,7 @@ class RTCClient(
                             "sdp" to description.description,
                             "type" to description.type
                         )
+                        AppData.error(TAG, "call onSetSuccess. offer: $offer")
                         socketRepository.sendMessage(
                             MessageModel(
                                 type = "create_offer",
@@ -113,7 +122,7 @@ class RTCClient(
     }
 
     fun onRemoteSessionReceived(session: SessionDescription) {
-        peerConnection.setRemoteDescription(object : SdpObserver {
+        peerConnection?.setRemoteDescription(object : SdpObserver {
             override fun onCreateSuccess(p0: SessionDescription?) {}
             override fun onSetSuccess() {}
             override fun onCreateFailure(p0: String?) {}
@@ -123,14 +132,14 @@ class RTCClient(
 
     fun answer(target: String) {
         val constraints: MediaConstraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
         }
-        peerConnection.createOffer(object : SdpObserver {
+        peerConnection?.createOffer(object : SdpObserver {
             override fun onSetSuccess() {}
             override fun onCreateFailure(p0: String?) {}
             override fun onSetFailure(p0: String?) {}
             override fun onCreateSuccess(description: SessionDescription) {
-                peerConnection.setLocalDescription(object : SdpObserver {
+                peerConnection?.setLocalDescription(object : SdpObserver {
                     override fun onCreateSuccess(p0: SessionDescription?) {}
                     override fun onCreateFailure(p0: String?) {}
                     override fun onSetFailure(p0: String?) {}
@@ -153,8 +162,9 @@ class RTCClient(
         }, constraints)
     }
 
-    fun addIceCandidate(ice: IceCandidate) {
-        peerConnection.addIceCandidate(ice)
+    fun addIceCandidate(ice: IceCandidate?) {
+        AppData.debug(TAG, "addIceCandidate called. ice: ${gson.toJson(ice)}")
+        peerConnection?.addIceCandidate(ice)
     }
 
     fun switchCamera() {
@@ -170,6 +180,6 @@ class RTCClient(
     }
 
     fun endCall() {
-        peerConnection.close()
+        peerConnection?.close()
     }
 }
