@@ -134,7 +134,7 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                         rtcClient.initializeSurfaceView(remoteView)
                         rtcClient.startLocalVideo(localView)
                         rtcClient.call(target = target)
-                        AppData.showToast(String.format("I called %s", message.name.toString()))
+                        AppData.showToast(String.format("I called %s", target))
                     }
                 }
             }
