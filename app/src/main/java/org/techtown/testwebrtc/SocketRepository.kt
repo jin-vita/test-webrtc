@@ -22,7 +22,7 @@ class SocketRepository(private val messageInterface: NewMessageInterface) {
         // if you are using your phone as emulator your local address is going to be this: "ws://192.168.1.3:3000"
         // but if your websocket is deployed you add your websocket address here
 
-        webSocket = object : WebSocketClient(URI("ws://192.168.148.110:3000")) {
+        webSocket = object : WebSocketClient(URI("ws://192.168.8.125:3000")) {
             override fun onOpen(handshakedata: ServerHandshake?) {
                 sendMessage(
                     MessageModel(

@@ -20,11 +20,11 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
     }
 
     private val binding by lazy { ActivityCallBinding.inflate(layoutInflater) }
+    private val socketRepository by lazy { SocketRepository(this) }
     private val gson by lazy { Gson() }
     private lateinit var userName: String
     private lateinit var target: String
-    private lateinit var socketRepository: SocketRepository
-    private var rtcClient: RTCClient? = null
+    private lateinit var rtcClient: RTCClient
     private var isMute = false
     private var isCameraPause = false
 
@@ -37,7 +37,6 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
     private fun ActivityCallBinding.init() {
         userName = intent.getStringExtra("userName").toString()
         targetUserNameEt.hint = "hey $userName! who to call ?"
-        socketRepository = SocketRepository(this@CallActivity)
         socketRepository.initSocket(userName)
         rtcClient = RTCClient(
             application = application,
@@ -46,7 +45,7 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
             observer = object : PeerConnectionObserver() {
                 override fun onIceCandidate(ice: IceCandidate?) {
                     super.onIceCandidate(ice)
-                    rtcClient?.addIceCandidate(ice)
+                    rtcClient.addIceCandidate(ice)
                     val candidate = hashMapOf(
                         "sdpMid" to ice?.sdpMid,
                         "sdpMLineIndex" to ice?.sdpMLineIndex,
@@ -54,10 +53,10 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                     )
                     socketRepository.sendMessage(
                         MessageModel(
-                            "ice_candidate",
-                            userName,
-                            target,
-                            candidate,
+                            type = "ice_candidate",
+                            name = userName,
+                            target = target,
+                            data = candidate,
                         )
                     )
                     Logging.enableLogToDebugOutput(Logging.Severity.LS_INFO)
@@ -66,6 +65,7 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                 override fun onAddStream(stream: MediaStream) {
                     super.onAddStream(stream)
                     stream.videoTracks[0].addSink(remoteView)
+                    AppData.debug(TAG, "onAddStream $stream")
                 }
             }
         )
@@ -90,7 +90,7 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                 isMute = true
                 micButton.setImageResource(R.drawable.ic_baseline_mic_24)
             }
-            rtcClient?.toggleAudio(isMute)
+            rtcClient.toggleAudio(isMute)
         }
 
         videoButton.setOnClickListener {
@@ -101,18 +101,18 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                 isCameraPause = true
                 videoButton.setImageResource(R.drawable.ic_baseline_videocam_24)
             }
-            rtcClient?.toggleCamera(isCameraPause)
+            rtcClient.toggleCamera(isCameraPause)
         }
 
         endCallButton.setOnClickListener {
             setViewVisibility(view = callLayout, isVisible = false)
             setViewVisibility(view = whoToCallLayout, isVisible = true)
             setViewVisibility(view = incomingCallLayout, isVisible = false)
-            rtcClient?.endCall()
+            rtcClient.endCall()
         }
 
         switchCameraButton.setOnClickListener {
-            rtcClient?.switchCamera()
+            rtcClient.switchCamera()
         }
     }
 
@@ -120,22 +120,21 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
         AppData.debug(TAG, "onNewMessage: $message")
         when (message.type) {
             "call_response" -> {
-                if (message.data == "user is not online") {
-                    // user is not reachable
-                    runOnUiThread {
-                        AppData.showToast("user is not reachable")
-                    }
-                    return
-                }
-                // we are ready for call, we started a call
                 runOnUiThread {
+                    if (message.data == "user is not online") {
+                        // user is not reachable
+                        AppData.showToast("user is not reachable")
+                        return@runOnUiThread
+                    }
+                    // we are ready for call, we started a call
                     binding.apply {
                         setViewVisibility(view = whoToCallLayout, isVisible = false)
                         setViewVisibility(view = callLayout, isVisible = true)
-                        rtcClient?.initializeSurfaceView(localView)
-                        rtcClient?.initializeSurfaceView(remoteView)
-                        rtcClient?.startLocalVideo(localView)
-                        rtcClient?.call(target)
+                        rtcClient.initializeSurfaceView(localView)
+                        rtcClient.initializeSurfaceView(remoteView)
+                        rtcClient.startLocalVideo(localView)
+                        rtcClient.call(target = target)
+                        AppData.showToast(String.format("I called %s", message.name.toString()))
                     }
                 }
             }
@@ -149,17 +148,17 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                             setViewVisibility(view = incomingCallLayout, isVisible = false)
                             setViewVisibility(view = callLayout, isVisible = true)
                             setViewVisibility(view = whoToCallLayout, isVisible = false)
-                            rtcClient?.initializeSurfaceView(localView)
-                            rtcClient?.initializeSurfaceView(remoteView)
-                            rtcClient?.startLocalVideo(localView)
+                            rtcClient.initializeSurfaceView(localView)
+                            rtcClient.initializeSurfaceView(remoteView)
+                            rtcClient.startLocalVideo(localView)
                             val session = SessionDescription(
                                 SessionDescription.Type.OFFER,
                                 message.data.toString()
                             )
-                            rtcClient?.onRemoteSessionReceived(session)
+                            rtcClient.onRemoteSessionReceived(session)
                             target = message.name.toString()
-                            rtcClient?.answer(target)
-                            remoteViewLoading.visibility = View.GONE
+                            rtcClient.answer(target)
+                            setViewVisibility(view = remoteViewLoading, isVisible = false)
                         }
                         rejectButton.setOnClickListener {
                             setViewVisibility(view = incomingCallLayout, isVisible = false)
@@ -173,9 +172,9 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                     SessionDescription.Type.ANSWER,
                     message.data.toString()
                 )
-                rtcClient?.onRemoteSessionReceived(session)
+                rtcClient.onRemoteSessionReceived(session)
                 runOnUiThread {
-                    binding.remoteViewLoading.visibility = View.GONE
+                    setViewVisibility(view = binding.remoteViewLoading, isVisible = false)
                 }
             }
 
@@ -183,11 +182,11 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                 try {
                     val receivingCandidate = gson.fromJson(gson.toJson(message.data), IceCandidateModel::class.java)
                     AppData.debug(TAG, "ice_candidate called. receivingCandidate: ${gson.toJson(receivingCandidate)}")
-                    rtcClient?.addIceCandidate(
+                    rtcClient.addIceCandidate(
                         IceCandidate(
                             receivingCandidate.sdpMid,
                             Math.toIntExact(receivingCandidate.sdpMLineIndex.toLong()),
-                            receivingCandidate.spdCandidate,
+                            receivingCandidate.sdpCandidate,
                         )
                     )
                 } catch (ex: Exception) {
