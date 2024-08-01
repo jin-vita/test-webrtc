@@ -59,6 +59,7 @@ class RTCClient(
     }
 
     fun initializeSurfaceView(surface: SurfaceViewRenderer) {
+        surface.release()
         surface.run {
             setEnableHardwareScaler(true)
             setMirror(true)
@@ -183,5 +184,7 @@ class RTCClient(
 
     fun endCall() {
         peerConnection.close()
+        videoCapture.stopCapture()
+        videoCapture.dispose()
     }
 }

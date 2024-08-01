@@ -22,8 +22,9 @@ class SocketRepository(private val messageInterface: NewMessageInterface) {
         // if you are using your phone as emulator your local address is going to be this: "ws://192.168.1.3:3000"
         // but if your websocket is deployed you add your websocket address here
 
-        webSocket = object : WebSocketClient(URI("ws://192.168.8.125:3000")) {
+        webSocket = object : WebSocketClient(URI("ws://192.168.1.1:3000")) {
             override fun onOpen(handshakedata: ServerHandshake?) {
+                AppData.debug(TAG, "WebSocketClient onOpen: $userName")
                 sendMessage(
                     MessageModel(
                         type = "store_user",
@@ -43,7 +44,7 @@ class SocketRepository(private val messageInterface: NewMessageInterface) {
             }
 
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
-                AppData.debug(TAG, "onClose: $code, $reason, $remote")
+                AppData.debug(TAG, "WebSocketClient onClose: $code, $reason, $remote")
             }
 
             override fun onError(ex: Exception?) {
@@ -51,6 +52,10 @@ class SocketRepository(private val messageInterface: NewMessageInterface) {
             }
         }
         webSocket.connect()
+    }
+
+    fun closeSocket() {
+        webSocket.close()
     }
 
     fun sendMessage(message: MessageModel) {

@@ -2,6 +2,7 @@ package org.techtown.testwebrtc
 
 import android.os.Bundle
 import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
 import org.techtown.testwebrtc.databinding.ActivityCallBinding
@@ -19,6 +20,15 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
         private const val TAG: String = "CallActivity"
     }
 
+    private val callback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (binding.whoToCallLayout.visibility == View.VISIBLE) {
+                socketRepository.closeSocket()
+                finish()
+            }
+        }
+    }
+
     private val binding by lazy { ActivityCallBinding.inflate(layoutInflater) }
     private val socketRepository by lazy { SocketRepository(this) }
     private val gson by lazy { Gson() }
@@ -31,6 +41,7 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
+        onBackPressedDispatcher.addCallback(this, callback)
         with(binding) { init() }
     }
 
@@ -109,6 +120,10 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
             setViewVisibility(view = whoToCallLayout, isVisible = true)
             setViewVisibility(view = incomingCallLayout, isVisible = false)
             rtcClient.endCall()
+            socketRepository.closeSocket()
+            localView.release()
+            remoteView.release()
+            finish()
         }
 
         switchCameraButton.setOnClickListener {
