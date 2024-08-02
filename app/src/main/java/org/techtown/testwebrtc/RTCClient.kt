@@ -76,7 +76,6 @@ class RTCClient(
         localStream.addTrack(localVideoTrack)
         localStream.addTrack(localAudioTrack)
         peerConnection.addStream(localStream)
-
     }
 
     private fun getVideoCapture(application: Application): CameraVideoCapturer {
@@ -95,21 +94,19 @@ class RTCClient(
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
         }
         peerConnection.createOffer(object : SdpObserver {
-            override fun onSetSuccess() {}
-            override fun onCreateFailure(p0: String?) {}
-            override fun onSetFailure(p0: String?) {}
             override fun onCreateSuccess(description: SessionDescription) {
-                AppData.error(TAG, "call onCreateSuccess. description: ${description.description}")
+                AppData.debug(TAG, "peer createOffer onCreateSuccess ${gson.toJson(description)}")
                 peerConnection.setLocalDescription(object : SdpObserver {
-                    override fun onCreateSuccess(p0: SessionDescription?) {}
-                    override fun onCreateFailure(p0: String?) {}
-                    override fun onSetFailure(p0: String?) {}
+                    override fun onCreateSuccess(p0: SessionDescription?) {
+                        AppData.debug(TAG, "peer createOffer local onCreateSuccess ${gson.toJson(p0)}")
+                    }
+
                     override fun onSetSuccess() {
+                        AppData.error(TAG, "peer createOffer local onSetSuccess")
                         val offer = hashMapOf(
                             "sdp" to description.description,
                             "type" to description.type
                         )
-                        AppData.error(TAG, "call onSetSuccess. offer: $offer")
                         socketRepository.sendMessage(
                             MessageModel(
                                 type = "create_offer",
@@ -119,17 +116,48 @@ class RTCClient(
                             )
                         )
                     }
+
+                    override fun onCreateFailure(p0: String?) {
+                        AppData.debug(TAG, "peer createOffer local onCreateFailure ${gson.toJson(p0)}")
+                    }
+
+                    override fun onSetFailure(p0: String?) {
+                        AppData.debug(TAG, "peer createOffer local onSetFailure ${gson.toJson(p0)}")
+                    }
                 }, description)
+            }
+
+            override fun onSetSuccess() {
+                AppData.debug(TAG, "peer createOffer onSetSuccess")
+            }
+
+            override fun onCreateFailure(p0: String?) {
+                AppData.debug(TAG, "peer createOffer onCreateFailure ${gson.toJson(p0)}")
+            }
+
+            override fun onSetFailure(p0: String?) {
+                AppData.debug(TAG, "peer createOffer onSetFailure ${gson.toJson(p0)}")
             }
         }, mediaConstraints)
     }
 
     fun onRemoteSessionReceived(session: SessionDescription) {
         peerConnection.setRemoteDescription(object : SdpObserver {
-            override fun onCreateSuccess(p0: SessionDescription?) {}
-            override fun onSetSuccess() {}
-            override fun onCreateFailure(p0: String?) {}
-            override fun onSetFailure(p0: String?) {}
+            override fun onCreateSuccess(p0: SessionDescription?) {
+                AppData.debug(TAG, "peer onCreateSuccess ${gson.toJson(p0)}")
+            }
+
+            override fun onSetSuccess() {
+                AppData.debug(TAG, "peer onSetSuccess")
+            }
+
+            override fun onCreateFailure(p0: String?) {
+                AppData.debug(TAG, "peer onCreateFailure ${gson.toJson(p0)}")
+            }
+
+            override fun onSetFailure(p0: String?) {
+                AppData.debug(TAG, "peer onSetFailure ${gson.toJson(p0)}")
+            }
         }, session)
     }
 
@@ -138,15 +166,15 @@ class RTCClient(
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
         }
         peerConnection.createAnswer(object : SdpObserver {
-            override fun onSetSuccess() {}
-            override fun onCreateFailure(p0: String?) {}
-            override fun onSetFailure(p0: String?) {}
             override fun onCreateSuccess(description: SessionDescription) {
+                AppData.debug(TAG, "peer createAnswer onCreateSuccess ${gson.toJson(description)}")
                 peerConnection.setLocalDescription(object : SdpObserver {
-                    override fun onCreateSuccess(p0: SessionDescription?) {}
-                    override fun onCreateFailure(p0: String?) {}
-                    override fun onSetFailure(p0: String?) {}
+                    override fun onCreateSuccess(p0: SessionDescription?) {
+                        AppData.debug(TAG, "peer createAnswer local onCreateSuccess ${gson.toJson(description)}")
+                    }
+
                     override fun onSetSuccess() {
+                        AppData.debug(TAG, "peer createAnswer local onSetSuccess")
                         val answer = hashMapOf(
                             "sdp" to description.description,
                             "type" to description.type
@@ -160,7 +188,27 @@ class RTCClient(
                             )
                         )
                     }
+
+                    override fun onCreateFailure(p0: String?) {
+                        AppData.debug(TAG, "peer createAnswer local onCreateFailure ${gson.toJson(p0)}")
+                    }
+
+                    override fun onSetFailure(p0: String?) {
+                        AppData.debug(TAG, "peer createAnswer local onSetFailure ${gson.toJson(p0)}")
+                    }
                 }, description)
+            }
+
+            override fun onSetSuccess() {
+                AppData.debug(TAG, "peer createAnswer onSetSuccess")
+            }
+
+            override fun onCreateFailure(p0: String?) {
+                AppData.debug(TAG, "peer createAnswer onCreateFailure ${gson.toJson(p0)}")
+            }
+
+            override fun onSetFailure(p0: String?) {
+                AppData.debug(TAG, "peer createAnswer onSetFailure ${gson.toJson(p0)}")
             }
         }, constraints)
     }

@@ -148,6 +148,7 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                         rtcClient.initializeSurfaceView(localView)
                         rtcClient.initializeSurfaceView(remoteView)
                         rtcClient.startLocalVideo(localView)
+                        rtcClient.toggleAudio(false)
                         rtcClient.call(target = target)
                         AppData.showToast(String.format("I called %s", target))
                     }
@@ -166,6 +167,7 @@ class CallActivity : AppCompatActivity(), NewMessageInterface {
                             rtcClient.initializeSurfaceView(localView)
                             rtcClient.initializeSurfaceView(remoteView)
                             rtcClient.startLocalVideo(localView)
+                            rtcClient.toggleAudio(false)
                             val session = SessionDescription(
                                 SessionDescription.Type.OFFER,
                                 message.data.toString()
